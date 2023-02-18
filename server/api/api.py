@@ -1,33 +1,52 @@
 import json
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request, json
 from flask_mysqldb import MySQL
-import MySQLdb.cursors
+from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
 
-app.config['MYSQL_HOST'] = '127.0.0.1'
-app.config['MYSQL_USER'] = 'root'
-app.config['MYSQL_PASSWORD'] = 'password123'
-app.config['MYSQL_DB'] = 'flaskdatabase'
-mysql = MySQL(app)
-@app.route('/api',methods = ["GET"])
+app.config["SQLALCHEMY_DATABASE_URI"] = 'mysql://root:g5y2Pw9C@localhost/flaskdatabase'
+db = SQLAlchemy(app)
 
-# def todo_serializer(todo):
-#     return {
-#         'id':todo.id,
-#         'content':todo.content
-#     }
+class Todo(db.Model):
+    id = db.Column(db.Integer, primary_key = True)
+    content = db.Column(db.Text, nullable = False)
 
-def index():
-    cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
-    query = "SELECT * FROM TODO"
-    cursor.execute(query)
-    result = cursor.fetchall()
-    # data = json.loads(result)
-    return jsonify(result)
+    def __str__(self):
+        return f'{self.id} {self.content}'
+
+def todo_serializer(todo):
     return {
-        'name':result
+        'id': todo.id,
+        'content': todo.content
     }
+
+@app.route('/api',methods = ['GET'])
+def index():
+    return jsonify([*map(todo_serializer, Todo.query.all())])
+
+@app.route('/api/create', methods = ['POST'])
+def create():
+    request_data = json.loads(request.data)
+    todo = Todo(content = request_data['content'])
+
+    db.session.add(todo)
+    db.session.commit()
+
+    return {'201': 'todo created sucessfully'}
+
+@app.route('/api/<int:id>')
+def show(id):
+    return jsonify([*map(todo_serializer, Todo.query.filter_by(id=id))])
+
+@app.route('/api/<int:id>', methods = ['POST'])
+def delete(id):
+    request_data = json.loads(request.data)
+    Todo.query.filter_by(id = request_data['id']).delete()
+
+    db.session.commit()
+
+    return {'204': 'deleted successfully'}
 
 if __name__ == '__main__':
     app.run(debug=True)
