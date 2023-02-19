@@ -1,11 +1,13 @@
 import json
 from flask import Flask, jsonify, request, json
 from flask_mysqldb import MySQL
+from flask_cors import CORS, cross_origin
 from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
 
 app.config["SQLALCHEMY_DATABASE_URI"] = 'mysql://root:g5y2Pw9C@localhost/flaskdatabase'
+cors = CORS(app)
 db = SQLAlchemy(app)
 
 class Todo(db.Model):
@@ -22,6 +24,7 @@ def todo_serializer(todo):
     }
 
 @app.route('/api',methods = ['GET'])
+@cross_origin()
 def index():
     return jsonify([*map(todo_serializer, Todo.query.all())])
 
